@@ -1,0 +1,22 @@
+[project]
+name = "mcpilot"
+version = "0.1.0"
+description = "Agentic analytics platform powered by MCP"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "mcp",
+    "google-genai",
+    "python-dotenv",
+    "sqlalchemy",
+    "psycopg[binary]",
+    "pandas",
+    "pydantic",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "httpx",
+]
