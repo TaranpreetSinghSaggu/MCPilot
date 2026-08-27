@@ -13,6 +13,7 @@ dependencies = [
     "psycopg[binary]",
     "pandas",
     "pydantic",
+    "alembic"
 ]
 
 [project.optional-dependencies]
