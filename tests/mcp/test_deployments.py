@@ -15,8 +15,8 @@ def test_search_deployments_tool():
     with Session(engine) as session:
         result = search_deployments_tool(session)
 
-        assert result["count"] == 35
-        assert len(result["deployments"]) == 35
+        assert result.count == 35
+        assert len(result.deployments) == 35
 
 
 def test_search_failed_deployments_tool():
@@ -26,10 +26,10 @@ def test_search_failed_deployments_tool():
             status="failed",
         )
 
-        assert result["count"] > 0
+        assert result.count > 0
 
-        for deployment in result["deployments"]:
-            assert deployment["status"] == "failed"
+        for deployment in result.deployments:
+            assert deployment.status == "failed"
 
 
 def test_search_production_deployments_tool():
@@ -39,10 +39,10 @@ def test_search_production_deployments_tool():
             environment="production",
         )
 
-        assert result["count"] > 0
+        assert result.count > 0
 
-        for deployment in result["deployments"]:
-            assert deployment["environment"] == "production"
+        for deployment in result.deployments:
+            assert deployment.environment == "production"
 
 
 def test_search_deployments_for_service():
@@ -52,10 +52,10 @@ def test_search_deployments_for_service():
             service_name="payment-api",
         )
 
-        assert result["count"] > 0
+        assert result.count > 0
 
-        for deployment in result["deployments"]:
-            assert deployment["service"] == "payment-api"
+        for deployment in result.deployments:
+            assert deployment.service == "payment-api"
 
 
 def test_get_deployment_stats():
@@ -65,7 +65,7 @@ def test_get_deployment_stats():
             service_name="payment-api",
         )
 
-        assert result["total_deployments"] >= 0
-        assert result["successful_deployments"] >= 0
-        assert result["failed_deployments"] >= 0
-        assert result["average_duration_seconds"] >= 0
+        assert result.total_deployments >= 0
+        assert result.successful_deployments >= 0
+        assert result.failed_deployments >= 0
+        assert result.average_duration_seconds >= 0

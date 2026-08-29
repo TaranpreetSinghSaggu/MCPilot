@@ -12,8 +12,8 @@ def test_search_issues_tool():
     with Session(engine) as session:
         result = search_issues_tool(session)
 
-        assert result["count"] == 30
-        assert len(result["issues"]) == 30
+        assert result.count == 30
+        assert len(result.issues) == 30
 
 
 def test_search_critical_issues_tool():
@@ -23,10 +23,10 @@ def test_search_critical_issues_tool():
             priority="critical",
         )
 
-        assert result["count"] > 0
+        assert result.count > 0
 
-        for issue in result["issues"]:
-            assert issue["priority"] == "critical"
+        for issue in result.issues:
+            assert issue.priority == "critical"
 
 
 def test_search_open_issues_for_repository():
@@ -37,11 +37,11 @@ def test_search_open_issues_for_repository():
             status="open",
         )
 
-        assert result["count"] > 0
+        assert result.count > 0
 
-        for issue in result["issues"]:
-            assert issue["repository"] == "checkout-platform"
-            assert issue["status"] == "open"
+        for issue in result.issues:
+            assert issue.repository == "checkout-platform"
+            assert issue.status == "open"
 
 
 def test_search_issues_by_assignee():
@@ -51,7 +51,7 @@ def test_search_issues_by_assignee():
             assignee_username="alice",
         )
 
-        assert result["count"] > 0
+        assert result.count > 0
 
-        for issue in result["issues"]:
-            assert issue["assignee"] == "alice"
+        for issue in result.issues:
+            assert issue.assignee == "alice"

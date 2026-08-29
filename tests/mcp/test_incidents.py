@@ -15,8 +15,8 @@ def test_search_incidents_tool():
     with Session(engine) as session:
         result = search_incidents_tool(session)
 
-        assert result["count"] == 20
-        assert len(result["incidents"]) == 20
+        assert result.count == 20
+        assert len(result.incidents) == 20
 
 
 def test_search_critical_incidents_tool():
@@ -26,10 +26,10 @@ def test_search_critical_incidents_tool():
             severity="critical",
         )
 
-        assert result["count"] > 0
+        assert result.count > 0
 
-        for incident in result["incidents"]:
-            assert incident["severity"] == "critical"
+        for incident in result.incidents:
+            assert incident.severity == "critical"
 
 
 def test_search_open_incidents_tool():
@@ -39,10 +39,10 @@ def test_search_open_incidents_tool():
             status="open",
         )
 
-        assert result["count"] > 0
+        assert result.count > 0
 
-        for incident in result["incidents"]:
-            assert incident["status"] == "open"
+        for incident in result.incidents:
+            assert incident.status == "open"
 
 
 def test_search_incidents_for_service():
@@ -52,10 +52,10 @@ def test_search_incidents_for_service():
             service_name="payment-api",
         )
 
-        assert result["count"] > 0
+        assert result.count > 0
 
-        for incident in result["incidents"]:
-            assert incident["service"] == "payment-api"
+        for incident in result.incidents:
+            assert incident.service == "payment-api"
 
 
 def test_get_incident_stats():
@@ -65,7 +65,7 @@ def test_get_incident_stats():
             service_name="payment-api",
         )
 
-        assert result["total_incidents"] >= 0
-        assert result["open_incidents"] >= 0
-        assert result["resolved_incidents"] >= 0
-        assert result["average_resolution_time_seconds"] >= 0
+        assert result.total_incidents >= 0
+        assert result.open_incidents >= 0
+        assert result.resolved_incidents >= 0
+        assert result.average_resolution_time_seconds >= 0

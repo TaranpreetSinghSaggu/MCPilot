@@ -1,5 +1,10 @@
 from sqlalchemy.orm import Session
 
+from backend.app.mcp.schemas import (
+    Deployment,
+    DeploymentSearchResult,
+    DeploymentStats,
+)
 from backend.app.services.deployment_service import (
     get_deployment_stats,
     search_deployments,
@@ -11,7 +16,7 @@ def search_deployments_tool(
     service_name: str | None = None,
     environment: str | None = None,
     status: str | None = None,
-) -> dict:
+) -> DeploymentSearchResult:
 
     deployments = search_deployments(
         session=session,
@@ -20,30 +25,30 @@ def search_deployments_tool(
         status=status,
     )
 
-    return {
-        "deployments": [
-            {
-                "service": deployment.service.name,
-                "commit_id": deployment.commit_id,
-                "environment": deployment.environment,
-                "status": deployment.status,
-                "version": deployment.version,
-                "duration_seconds": deployment.duration_seconds,
-                "deployed_by": deployment.deployer.username,
-                "started_at": deployment.started_at.isoformat(),
-                "completed_at": deployment.completed_at.isoformat(),
-            }
+    return DeploymentSearchResult(
+        deployments=[
+            Deployment(
+                service=deployment.service.name,
+                commit_id=deployment.commit_id,
+                environment=deployment.environment,
+                status=deployment.status,
+                version=deployment.version,
+                duration_seconds=deployment.duration_seconds,
+                deployed_by=deployment.deployer.username,
+                started_at=deployment.started_at.isoformat(),
+                completed_at=deployment.completed_at.isoformat(),
+            )
             for deployment in deployments
         ],
-        "count": len(deployments),
-    }
+        count=len(deployments),
+    )
 
 
 def get_deployment_stats_tool(
     session: Session,
     service_name: str | None = None,
     environment: str | None = None,
-) -> dict:
+) -> DeploymentStats:
 
     stats = get_deployment_stats(
         session=session,
@@ -51,4 +56,4 @@ def get_deployment_stats_tool(
         environment=environment,
     )
 
-    return stats
+    return DeploymentStats(**stats)

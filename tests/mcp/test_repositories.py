@@ -12,8 +12,8 @@ def test_search_repositories():
     with Session(engine) as session:
         result = search_repositories(session)
 
-        assert result["count"] == 5
-        assert len(result["repositories"]) == 5
+        assert result.count == 5
+        assert len(result.repositories) == 5
 
 
 def test_search_repositories_by_language():
@@ -23,10 +23,10 @@ def test_search_repositories_by_language():
             language="Python",
         )
 
-        assert result["count"] > 0
+        assert result.count > 0
 
-        for repository in result["repositories"]:
-            assert repository["language"] == "Python"
+        for repository in result.repositories:
+            assert repository.language == "Python"
 
 
 def test_search_repositories_by_visibility():
@@ -36,10 +36,10 @@ def test_search_repositories_by_visibility():
             visibility="private",
         )
 
-        assert result["count"] > 0
+        assert result.count > 0
 
-        for repository in result["repositories"]:
-            assert repository["visibility"] == "private"
+        for repository in result.repositories:
+            assert repository.visibility == "private"
 
 
 def test_search_repositories_with_multiple_filters():
@@ -50,6 +50,6 @@ def test_search_repositories_with_multiple_filters():
             visibility="private",
         )
 
-        for repository in result["repositories"]:
-            assert repository["language"] == "Python"
-            assert repository["visibility"] == "private"
+        for repository in result.repositories:
+            assert repository.language == "Python"
+            assert repository.visibility == "private"

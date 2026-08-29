@@ -1,5 +1,10 @@
 from sqlalchemy.orm import Session
 
+from backend.app.mcp.schemas import (
+    Incident,
+    IncidentSearchResult,
+    IncidentStats,
+)
 from backend.app.services.incident_service import (
     get_incident_stats,
     search_incidents,
@@ -11,7 +16,7 @@ def search_incidents_tool(
     service_name: str | None = None,
     severity: str | None = None,
     status: str | None = None,
-) -> dict:
+) -> IncidentSearchResult:
 
     incidents = search_incidents(
         session=session,
@@ -20,36 +25,36 @@ def search_incidents_tool(
         status=status,
     )
 
-    return {
-        "incidents": [
-            {
-                "service": incident.service.name,
-                "title": incident.title,
-                "description": incident.description,
-                "severity": incident.severity,
-                "status": incident.status,
-                "detected_at": incident.detected_at.isoformat(),
-                "resolved_at": (
+    return IncidentSearchResult(
+        incidents=[
+            Incident(
+                service=incident.service.name,
+                title=incident.title,
+                description=incident.description,
+                severity=incident.severity,
+                status=incident.status,
+                detected_at=incident.detected_at.isoformat(),
+                resolved_at=(
                     incident.resolved_at.isoformat()
                     if incident.resolved_at
                     else None
                 ),
-                "root_cause": incident.root_cause,
-            }
+                root_cause=incident.root_cause,
+            )
             for incident in incidents
         ],
-        "count": len(incidents),
-    }
+        count=len(incidents),
+    )
 
 
 def get_incident_stats_tool(
     session: Session,
     service_name: str | None = None,
-) -> dict:
+) -> IncidentStats:
 
     stats = get_incident_stats(
         session=session,
         service_name=service_name,
     )
 
-    return stats
+    return IncidentStats(**stats)
