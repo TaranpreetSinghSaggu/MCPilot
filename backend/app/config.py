@@ -16,3 +16,9 @@ if not GEMINI_API_KEY:
 
 if not DATABASE_URL:
     raise RuntimeError("DATABASE_URL is not configured.")
+
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "")
+GITHUB_API_URL = os.getenv(
+    "GITHUB_API_URL",
+    "https://api.github.com",
+)
