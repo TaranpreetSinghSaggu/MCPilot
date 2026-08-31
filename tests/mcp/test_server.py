@@ -45,7 +45,8 @@ from mcp.client.stdio import stdio_client
 
 SERVER_PARAMS = StdioServerParameters(
     command="python3",
-    args=["-m", "backend.app.mcp.server"],
+    # args=["-m", "backend.app.mcp.server"],
+    args=["-m", "backend.app.mcp.stdio_server"],
 )
 
 
@@ -71,6 +72,9 @@ async def test_server_lists_tools():
                 "get_deployment_stats",
                 "search_incidents",
                 "get_incident_stats",
+                "github_get_repository",
+                "github_get_issues",
+                "github_get_pull_requests",
             }
 
             assert tool_names == expected_tools

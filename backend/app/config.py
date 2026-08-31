@@ -6,12 +6,18 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+LLM_PRIMARY = os.getenv("LLM_PRIMARY", "gemini")
+
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 
 if not GEMINI_API_KEY:
     raise RuntimeError("GEMINI_API_KEY is not configured.")
+
+
 
 
 if not DATABASE_URL:

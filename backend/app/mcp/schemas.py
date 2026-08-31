@@ -89,3 +89,42 @@ class IncidentStats(BaseModel):
     open_incidents: int
     resolved_incidents: int
     average_resolution_time_seconds: float
+
+class GitHubRepository(BaseModel):
+    name: str
+    full_name: str
+    description: str | None
+    language: str | None
+    visibility: str | None
+    default_branch: str | None
+    html_url: str | None
+
+
+class GitHubIssue(BaseModel):
+    number: int
+    title: str
+    state: str
+    html_url: str
+    user: str | None
+    created_at: str | None
+    updated_at: str | None
+
+
+class GitHubPullRequest(BaseModel):
+    number: int
+    title: str
+    state: str
+    html_url: str
+    user: str | None
+    created_at: str | None
+    updated_at: str | None
+
+
+class GitHubIssuesResult(BaseModel):
+    issues: list[GitHubIssue]
+    count: int
+
+
+class GitHubPullRequestsResult(BaseModel):
+    pull_requests: list[GitHubPullRequest]
+    count: int

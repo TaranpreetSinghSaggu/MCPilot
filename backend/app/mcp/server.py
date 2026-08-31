@@ -19,6 +19,12 @@ from backend.app.mcp.tools.incidents import (
 from backend.app.mcp.tools.issues import search_issues_tool
 from backend.app.mcp.tools.repositories import search_repositories
 
+from backend.app.mcp.tools.github import (
+    get_github_issues,
+    get_github_pull_requests,
+    get_github_repository,
+)
+
 
 engine = create_engine(DATABASE_URL)
 
@@ -164,6 +170,61 @@ def get_incident_stats_mcp(
             service_name=service_name,
         )
 
+@mcp.tool(
+    name="github_get_repository",
+    description="Get repository information from GitHub using the repository owner and name.",
+)
+async def github_get_repository_mcp(
+    owner: str,
+    repository: str,
+):
+    return await get_github_repository(
+        owner=owner,
+        repository=repository,
+    )
+
+
+@mcp.tool(
+    name="github_get_issues",
+    description="Get issues from a GitHub repository, optionally filtered by state.",
+)
+async def github_get_issues_mcp(
+    owner: str,
+    repository: str,
+    state: str = "open",
+    per_page: int = 30,
+):
+    return await get_github_issues(
+        owner=owner,
+        repository=repository,
+        state=state,
+        per_page=per_page,
+    )
+
+
+@mcp.tool(
+    name="github_get_pull_requests",
+    description="Get pull requests from a GitHub repository, optionally filtered by state.",
+)
+async def github_get_pull_requests_mcp(
+    owner: str,
+    repository: str,
+    state: str = "open",
+    per_page: int = 30,
+):
+    return await get_github_pull_requests(
+        owner=owner,
+        repository=repository,
+        state=state,
+        per_page=per_page,
+    )
+
+
 
 if __name__ == "__main__":
-    mcp.run(transport="stdio")
+    mcp.run(
+        transport="streamable-http",
+        stateless_http=True,
+        json_response=True,
+        port=8001,
+    )
