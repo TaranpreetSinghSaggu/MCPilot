@@ -2,12 +2,12 @@ from typing import Any
 
 from mcp import Client
 
-
-MCP_SERVER_URL = "http://localhost:8001/mcp"
+from backend.app.config import MCP_SERVER_URL
 
 
 class MCPClient:
-    def __init__(self, server_url: str = MCP_SERVER_URL):
+    def __init__(self, server_url: str | None = None):
+        server_url = server_url or MCP_SERVER_URL
         self.client = Client(server_url)
         self.session = None
 

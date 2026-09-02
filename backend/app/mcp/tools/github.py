@@ -1,4 +1,4 @@
-from backend.app.config import GITHUB_TOKEN
+from backend.app.config import GITHUB_API_URL, GITHUB_TOKEN
 from backend.app.integrations.github.adapter import GitHubAdapter
 from backend.app.integrations.github.client import GitHubClient
 from backend.app.mcp.schemas import (
@@ -12,7 +12,10 @@ async def get_github_repository(
     owner: str,
     repository: str,
 ) -> GitHubRepository:
-    async with GitHubClient(token=GITHUB_TOKEN) as client:
+    async with GitHubClient(
+        token=GITHUB_TOKEN,
+        base_url=GITHUB_API_URL,
+    ) as client:
         adapter = GitHubAdapter(client)
 
         result = await adapter.get_repository(
@@ -29,7 +32,10 @@ async def get_github_issues(
     state: str = "open",
     per_page: int = 30,
 ) -> GitHubIssuesResult:
-    async with GitHubClient(token=GITHUB_TOKEN) as client:
+    async with GitHubClient(
+        token=GITHUB_TOKEN,
+        base_url=GITHUB_API_URL,
+    ) as client:
         adapter = GitHubAdapter(client)
 
         issues = await adapter.get_issues(
@@ -51,7 +57,10 @@ async def get_github_pull_requests(
     state: str = "open",
     per_page: int = 30,
 ) -> GitHubPullRequestsResult:
-    async with GitHubClient(token=GITHUB_TOKEN) as client:
+    async with GitHubClient(
+        token=GITHUB_TOKEN,
+        base_url=GITHUB_API_URL,
+    ) as client:
         adapter = GitHubAdapter(client)
 
         pull_requests = await adapter.get_pull_requests(

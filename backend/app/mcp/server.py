@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from mcp.server.mcpserver import MCPServer
 
-from backend.app.config import DATABASE_URL
+from backend.app.config import DATABASE_URL, MCP_HOST, MCP_PORT
 from backend.app.mcp.tools.builds import (
     get_slowest_builds_tool,
     search_builds_tool,
@@ -226,5 +226,6 @@ if __name__ == "__main__":
         transport="streamable-http",
         stateless_http=True,
         json_response=True,
-        port=8001,
+        host=MCP_HOST,
+        port=MCP_PORT,
     )

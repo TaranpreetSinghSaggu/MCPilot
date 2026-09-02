@@ -2,12 +2,14 @@
 name = "mcpilot"
 version = "0.1.0"
 description = "Agentic analytics platform powered by MCP"
-requires-python = ">=3.11"
+requires-python = ">=3.10,<3.11"
 dependencies = [
     "fastapi",
     "uvicorn[standard]",
     "mcp",
     "google-genai",
+    "groq",
+    "openai",
     "python-dotenv",
     "sqlalchemy",
     "psycopg[binary]",
@@ -21,3 +23,7 @@ dev = [
     "pytest",
     "httpx",
 ]
+
+[tool.setuptools.packages.find]
+include = ["backend*"]
+exclude = ["frontend*", "migrations*"]
