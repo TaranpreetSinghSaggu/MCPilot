@@ -208,18 +208,37 @@ function readPrompt() {
 
 async function checkReadiness() {
   const requestId = ++readinessRequestId
+
   readinessController?.abort()
+
   const controller = new AbortController()
   readinessController = controller
+
   readinessState.value = 'starting'
   readinessError.value = ''
 
   try {
+    const wakeResponse = await fetch(
+      'https://mcpilot-mcp.onrender.com/health',
+      {
+        signal: controller.signal,
+      },
+    )
+
+    if (!wakeResponse.ok) {
+      throw new Error(
+        `MCP wake request failed with HTTP ${wakeResponse.status}.`,
+      )
+    }
+
     await api.mcpReadiness(controller.signal)
+
     if (requestId !== readinessRequestId) return
+
     readinessState.value = 'ready'
   } catch (readinessRequestError) {
     if (requestId !== readinessRequestId) return
+
     readinessState.value = 'failed'
     readinessError.value = readinessRequestError instanceof Error
       ? readinessRequestError.message
