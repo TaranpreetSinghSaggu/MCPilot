@@ -2,6 +2,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from mcp.server.mcpserver import MCPServer
+from mcp.server.transport_security import TransportSecuritySettings
+
 from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
@@ -230,16 +232,45 @@ async def github_get_pull_requests_mcp(
 
 
 if __name__ == "__main__":
-    app = mcp.streamable_http_app()
+    import uvicorn
+
+    security = TransportSecuritySettings(
+        allowed_hosts=[
+            "mcpilot-mcp.onrender.com",
+            "mcpilot-mcp.onrender.com:*",
+        ],
+        allowed_origins=[
+            "https://frontend-two-blond-33.vercel.app",
+        ],
+    )
+
+    app = mcp.streamable_http_app(
+        transport_security=security,
+    )
 
     app = CORSMiddleware(
         app,
-        allow_origins=["https://frontend-two-blond-33.vercel.app"],
-        allow_methods=["GET", "POST", "DELETE"],
-        allow_headers=["*"],
+        allow_origins=[
+            "https://frontend-two-blond-33.vercel.app",
+        ],
+        allow_methods=[
+            "GET",
+            "POST",
+            "DELETE",
+        ],
+        allow_headers=[
+            "Authorization",
+            "Content-Type",
+            "Last-Event-ID",
+            "Mcp-Method",
+            "Mcp-Name",
+            "Mcp-Protocol-Version",
+            "Mcp-Session-Id",
+        ],
+        expose_headers=[
+            "Mcp-Session-Id",
+        ],
     )
-
-    import uvicorn
 
     uvicorn.run(
         app,
