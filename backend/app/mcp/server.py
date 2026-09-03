@@ -2,6 +2,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from mcp.server.mcpserver import MCPServer
+from starlette.requests import Request
+from starlette.responses import JSONResponse
 
 from backend.app.config import DATABASE_URL, MCP_HOST, MCP_PORT
 from backend.app.mcp.tools.builds import (
@@ -33,6 +35,11 @@ mcp = MCPServer(
     description="MCP server for software engineering and DevOps intelligence.",
     version="0.1.0",
 )
+
+
+@mcp.custom_route("/health", methods=["GET"])
+async def health_check(request: Request) -> JSONResponse:
+    return JSONResponse({"status": "ok", "service": "mcp"})
 
 
 @mcp.tool(

@@ -3,11 +3,12 @@ import logging
 from typing import Literal
 
 import anyio
+import httpx
 from fastapi import APIRouter, HTTPException
-
 from pydantic import BaseModel, Field
 
 from backend.app.agent import Agent, TraceEvent
+from backend.app.config import MCP_SERVER_URL
 from backend.app.mcp.client import MCPClient
 
 
@@ -22,6 +23,8 @@ router = APIRouter(
 MCP_READINESS_TIMEOUT_SECONDS = 120.0
 MCP_READINESS_INITIAL_DELAY_SECONDS = 1.0
 MCP_READINESS_MAX_DELAY_SECONDS = 15.0
+
+MCP_WAKE_URL = f"{MCP_SERVER_URL.rsplit('/mcp', 1)[0]}/health"
 
 
 class ChatTurn(BaseModel):
@@ -57,18 +60,24 @@ class MCPReadinessResponse(BaseModel):
 async def _retry_mcp_readiness() -> None:
     delay = MCP_READINESS_INITIAL_DELAY_SECONDS
 
-    while True:
-        try:
-            async with MCPClient() as client:
-                await client.list_tools()
-            return
-        except Exception as exc:
-            logger.warning(
-                "MCP readiness attempt failed with %s",
-                type(exc).__name__,
-            )
-            await anyio.sleep(delay)
-            delay = min(delay * 2, MCP_READINESS_MAX_DELAY_SECONDS)
+    async with httpx.AsyncClient(timeout=15.0) as http:
+        while True:
+            try:
+                wake_response = await http.get(MCP_WAKE_URL)
+                wake_response.raise_for_status()
+
+                async with MCPClient() as client:
+                    await client.list_tools()
+
+                return
+
+            except Exception as exc:
+                logger.warning(
+                    "MCP readiness attempt failed with %s",
+                    type(exc).__name__,
+                )
+                await anyio.sleep(delay)
+                delay = min(delay * 2, MCP_READINESS_MAX_DELAY_SECONDS)
 
 
 @router.get("/readiness", response_model=MCPReadinessResponse)
