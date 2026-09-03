@@ -8,6 +8,7 @@ describe('ChatView', () => {
     const sidebarTarget = document.createElement('div')
     sidebarTarget.id = 'chat-sidebar-slot'
     document.body.appendChild(sidebarTarget)
+    vi.spyOn(api, 'mcpReadiness').mockResolvedValue({ status: 'ready', service: 'mcp' })
   })
 
   afterEach(() => {
@@ -25,6 +26,7 @@ describe('ChatView', () => {
       }),
     )
     const wrapper = mount(ChatView)
+    await flushPromises()
     const textarea = wrapper.get('textarea')
 
     await textarea.setValue('What is open?')
@@ -46,6 +48,7 @@ describe('ChatView', () => {
       .mockRejectedValueOnce(new Error('Service unavailable'))
       .mockResolvedValueOnce(recoveredResponse)
     const wrapper = mount(ChatView)
+    await flushPromises()
 
     await wrapper.get('textarea').setValue('Try this')
     await wrapper.get('form').trigger('submit')
@@ -56,18 +59,67 @@ describe('ChatView', () => {
     await flushPromises()
     expect(chat).toHaveBeenCalledTimes(2)
     expect(wrapper.text()).toContain('Recovered.')
+    expect(wrapper.findAll('article').filter((message) => message.text() === 'Try this')).toHaveLength(1)
+  })
+
+  it('starts MCP readiness on mount and disables the composer until it succeeds', async () => {
+    let resolveReadiness: (value: { status: string; service: string }) => void = () => undefined
+    const readiness = vi.mocked(api.mcpReadiness)
+    readiness.mockImplementationOnce(() => new Promise((resolve) => {
+      resolveReadiness = resolve
+    }))
+    const chat = vi.spyOn(api, 'chat')
+    const wrapper = mount(ChatView)
+
+    expect(readiness).toHaveBeenCalledOnce()
+    expect(wrapper.get('[role="status"]').text()).toContain('Connecting to MCPilot tools')
+    expect(wrapper.get('textarea').attributes('disabled')).toBeDefined()
+    await wrapper.get('form').trigger('submit')
+    expect(chat).not.toHaveBeenCalled()
+
+    resolveReadiness({ status: 'ready', service: 'mcp' })
+    await flushPromises()
+
+    expect(wrapper.find('[role="status"]').exists()).toBe(false)
+    expect(wrapper.get('textarea').attributes('disabled')).toBeUndefined()
+  })
+
+  it('shows readiness failure and retries readiness without creating a chat message', async () => {
+    const readiness = vi.mocked(api.mcpReadiness)
+    const chat = vi.spyOn(api, 'chat')
+    readiness
+      .mockRejectedValueOnce(new Error('MCP service did not become ready within 2 minutes.'))
+      .mockResolvedValueOnce({ status: 'ready', service: 'mcp' })
+    const wrapper = mount(ChatView)
+    await flushPromises()
+
+    expect(wrapper.get('[role="alert"]').text()).toContain('MCP service did not become ready within 2 minutes.')
+    expect(wrapper.get('[role="alert"] button').text()).toContain('Retry readiness')
+    expect(wrapper.get('textarea').attributes('disabled')).toBeDefined()
+    expect(wrapper.text()).not.toContain('Try this')
+    expect(chat).not.toHaveBeenCalled()
+
+    await wrapper.get('[role="alert"] button').trigger('click')
+    await flushPromises()
+
+    expect(readiness).toHaveBeenCalledTimes(2)
+    expect(wrapper.get('textarea').attributes('disabled')).toBeUndefined()
+    expect(wrapper.text()).not.toContain('MCP service did not become ready')
+    expect(chat).not.toHaveBeenCalled()
   })
 
   it('restores the transcript after the route component is remounted', async () => {
     const response = { answer: 'This remains in the session.', trace: [] as [] }
     vi.spyOn(api, 'chat').mockResolvedValue(response)
     const first = mount(ChatView)
+    await flushPromises()
     await first.get('textarea').setValue('Remember this')
     await first.get('form').trigger('submit')
     await flushPromises()
     first.unmount()
 
     const second = mount(ChatView)
+    await flushPromises()
     expect(second.text()).toContain('This remains in the session.')
   })
 
@@ -78,6 +130,7 @@ describe('ChatView', () => {
       .mockResolvedValueOnce(firstResponse)
       .mockResolvedValueOnce(followUpResponse)
     const wrapper = mount(ChatView)
+    await flushPromises()
 
     await wrapper.get('textarea').setValue('First question')
     await wrapper.get('form').trigger('submit')
@@ -117,6 +170,7 @@ describe('ChatView', () => {
     }
     vi.spyOn(api, 'chat').mockResolvedValue(response)
     const wrapper = mount(ChatView)
+    await flushPromises()
 
     await wrapper.get('textarea').setValue('Is the service healthy?')
     await wrapper.get('form').trigger('submit')
@@ -134,6 +188,7 @@ describe('ChatView', () => {
       .mockResolvedValueOnce(firstResponse)
       .mockResolvedValueOnce(secondResponse)
     const wrapper = mount(ChatView)
+    await flushPromises()
 
     await wrapper.get('textarea').setValue('First question')
     await wrapper.get('form').trigger('submit')

@@ -113,6 +113,11 @@ export interface HealthResponse {
   service: string
 }
 
+export interface MCPReadinessResponse {
+  status: string
+  service: string
+}
+
 export class ApiError extends Error {
   constructor(
     message: string,

@@ -37,6 +37,20 @@ describe('api service', () => {
     )
   })
 
+  it('checks MCP readiness through FastAPI', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ status: 'ready', service: 'mcp' }), { status: 200 }),
+    )
+    const controller = new AbortController()
+
+    await api.mcpReadiness(controller.signal)
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/agent/readiness',
+      expect.objectContaining({ signal: controller.signal }),
+    )
+  })
+
   it('serializes prior chat turns and rejects malformed successful responses', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(JSON.stringify({ answer: 'Ready.', trace: [] }), { status: 200 }),
@@ -77,5 +91,16 @@ describe('api service', () => {
     )
 
     await expect(api.health()).rejects.toMatchObject({ message: 'MCPilot is unavailable right now. Please try again.', status: 503 })
+  })
+
+  it('preserves the readiness failure detail for the Chat view', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ detail: 'MCP service is still waking up.' }), { status: 503 }),
+    )
+
+    await expect(api.mcpReadiness()).rejects.toMatchObject({
+      message: 'MCP service is still waking up.',
+      status: 503,
+    })
   })
 })

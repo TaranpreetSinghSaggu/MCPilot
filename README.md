@@ -171,6 +171,7 @@ The FastAPI backend exposes these important endpoints:
 | Method | Endpoint | Purpose |
 | --- | --- | --- |
 | GET | `/health` | Service health response |
+| GET | `/api/agent/readiness` | Verify MCP connectivity and tool discovery |
 | GET | `/api/repositories` | Search persisted repositories |
 | GET | `/api/issues` | Search persisted issues |
 | GET | `/api/builds` | Search build runs |

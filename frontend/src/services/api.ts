@@ -7,6 +7,7 @@ import type {
   IncidentResponse,
   IncidentStats,
   IssueResponse,
+  MCPReadinessResponse,
   RepositoryResponse,
   ChatTurn,
 } from '@/types/api'
@@ -28,6 +29,7 @@ function queryString(values: Record<string, string | number | undefined>): strin
 }
 
 type PayloadValidator = (payload: unknown) => boolean
+type RequestOptions = { preserveServerErrorDetail?: boolean }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -43,7 +45,12 @@ function hasNumberFields(...fields: string[]): PayloadValidator {
   return (payload) => isRecord(payload) && fields.every((field) => typeof payload[field] === 'number')
 }
 
-async function request<T>(path: string, init?: RequestInit, validate: PayloadValidator = isRecord): Promise<T> {
+async function request<T>(
+  path: string,
+  init?: RequestInit,
+  validate: PayloadValidator = isRecord,
+  options: RequestOptions = {},
+): Promise<T> {
   let response: Response
 
   try {
@@ -73,11 +80,12 @@ async function request<T>(path: string, init?: RequestInit, validate: PayloadVal
   }
 
   if (!response.ok) {
-    const detail = response.status >= 500
+    const responseDetail = typeof payload === 'object' && payload !== null && 'detail' in payload
+      ? String(payload.detail)
+      : 'The request could not be completed.'
+    const detail = response.status >= 500 && !options.preserveServerErrorDetail
       ? 'MCPilot is unavailable right now. Please try again.'
-      : typeof payload === 'object' && payload !== null && 'detail' in payload
-        ? String(payload.detail)
-        : 'The request could not be completed.'
+      : responseDetail
     throw new ApiError(detail, response.status)
   }
 
@@ -96,6 +104,17 @@ export const api = {
       (payload) => isRecord(payload)
         && typeof payload.status === 'string'
         && typeof payload.service === 'string',
+    )
+  },
+
+  mcpReadiness(signal?: AbortSignal): Promise<MCPReadinessResponse> {
+    return request<MCPReadinessResponse>(
+      '/api/agent/readiness',
+      { signal },
+      (payload) => isRecord(payload)
+        && payload.status === 'ready'
+        && payload.service === 'mcp',
+      { preserveServerErrorDetail: true },
     )
   },
 

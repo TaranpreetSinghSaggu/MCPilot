@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import ChatComposer from '@/components/chat/ChatComposer.vue'
 import ChatEmptyState from '@/components/chat/ChatEmptyState.vue'
 import ChatMessage from '@/components/chat/ChatMessage.vue'
@@ -20,7 +20,11 @@ const isLoading = ref(false)
 const error = ref('')
 const lastQuestion = ref('')
 const initialPrompt = ref('')
+const readinessState = ref<'starting' | 'ready' | 'failed'>('starting')
+const readinessError = ref('')
 const composerRef = ref<{ focus: () => void } | null>(null)
+let readinessRequestId = 0
+let readinessController: AbortController | null = null
 
 function createId() {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
@@ -202,8 +206,31 @@ function readPrompt() {
   }
 }
 
+async function checkReadiness() {
+  const requestId = ++readinessRequestId
+  readinessController?.abort()
+  const controller = new AbortController()
+  readinessController = controller
+  readinessState.value = 'starting'
+  readinessError.value = ''
+
+  try {
+    await api.mcpReadiness(controller.signal)
+    if (requestId !== readinessRequestId) return
+    readinessState.value = 'ready'
+  } catch (readinessRequestError) {
+    if (requestId !== readinessRequestId) return
+    readinessState.value = 'failed'
+    readinessError.value = readinessRequestError instanceof Error
+      ? readinessRequestError.message
+      : 'MCPilot could not connect to its tools. Please retry readiness.'
+  } finally {
+    if (requestId === readinessRequestId) readinessController = null
+  }
+}
+
 async function send(message: string) {
-  if (isLoading.value || !activeConversation.value) return
+  if (isLoading.value || readinessState.value !== 'ready' || !activeConversation.value) return
 
   lastQuestion.value = message
   error.value = ''
@@ -243,10 +270,16 @@ function retry() {
 }
 
 onMounted(() => {
+  void checkReadiness()
   const { prompt, startsNewConversation } = readPrompt()
   if (startsNewConversation) newChat()
   initialPrompt.value = prompt
   if (prompt || startsNewConversation) window.history.replaceState({}, '', window.location.pathname)
+})
+
+onUnmounted(() => {
+  readinessRequestId += 1
+  readinessController?.abort()
 })
 </script>
 
@@ -281,10 +314,19 @@ onMounted(() => {
     <div class="grid flex-1 gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
 
       <div>
-        <div v-if="messages.length === 0" class="min-h-80">
+        <div v-if="readinessState === 'starting'" class="rounded-2xl border border-amber-300/20 bg-amber-300/5 p-6" role="status" aria-live="polite">
+          <p class="font-medium text-amber-100">Connecting to MCPilot tools…</p>
+          <p class="mt-1 text-sm text-amber-200/70">The MCP service may be waking up. The AI services are waking up. This may take up to two minutes on the first visit.</p>
+        </div>
+        <div v-else-if="readinessState === 'failed'" class="rounded-2xl border border-rose-400/20 bg-rose-400/5 p-6" role="alert">
+          <p class="font-medium text-rose-100">MCPilot tools are not ready</p>
+          <p class="mt-1 text-sm text-rose-200/70">{{ readinessError }}</p>
+          <button type="button" class="mt-4 rounded-lg bg-rose-200 px-3 py-2 text-sm font-semibold text-rose-950 hover:bg-rose-100" @click="checkReadiness">Retry readiness</button>
+        </div>
+        <div v-if="readinessState === 'ready' && messages.length === 0" class="min-h-80">
           <ChatEmptyState @prompt="send" />
         </div>
-        <div v-else class="space-y-5 overflow-y-auto pb-6" aria-live="polite">
+        <div v-else-if="messages.length > 0" class="space-y-5 overflow-y-auto pb-6" aria-live="polite">
           <ChatMessage
             v-for="message in messages"
             :key="message.id"
@@ -309,7 +351,7 @@ onMounted(() => {
     </div>
 
     <div class="sticky bottom-0 mt-5 bg-[#08111f] pt-2">
-      <ChatComposer ref="composerRef" :disabled="isLoading" :initial-message="initialPrompt" @submit="send" />
+      <ChatComposer ref="composerRef" :disabled="isLoading || readinessState !== 'ready'" :initial-message="initialPrompt" @submit="send" />
     </div>
   </section>
 </template>
