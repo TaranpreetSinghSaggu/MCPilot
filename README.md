@@ -1,133 +1,351 @@
 # MCPilot
 
-MCPilot is an AI engineering portfolio project that answers DevOps questions using live application data, MCP tools, and configurable LLM providers.
+MCPilot is an AI-powered DevOps intelligence platform that combines LLM reasoning, Model Context Protocol (MCP), structured tool execution, PostgreSQL, GitHub integration, and a modern web interface.
 
-## Architecture
+## Demo
 
-- FastAPI REST API: `backend.app.main:app`
-- PostgreSQL with SQLAlchemy and Alembic
-- Streamable HTTP MCP server at `/mcp` for production
-- `stdio_server.py` as the local/development MCP entry point
-- Vue 3, TypeScript, Vite, and Tailwind frontend
-- Gemini, Groq, and OpenAI providers with ordered fallback
-- GitHub read operations exposed through MCP tools
+**Live Demo:** [Open MCPilot](https://frontend-two-blond-33.vercel.app/chat)
 
-## Requirements
+MCPilot provides two primary experiences:
+
+- **AI Assistant** — ask natural-language questions about repositories, builds, deployments, incidents, issues, and supported GitHub resources.
+- **Operations Dashboard** — explore structured operational data through filters and statistics.
+
+The public demo may take longer to respond on the first request after inactivity because the deployment can experience cold starts.
+
+## Overview
+
+MCPilot demonstrates how an AI agent can answer practical DevOps questions using structured tools and real application data.
+
+A user asks a question in natural language, the agent determines the required capability, invokes the appropriate tool through MCP against PostgreSQL or GitHub, and feeds the structured result back to the LLM to generate the final response.
+
+Each request also produces a structured execution trace, making the system more than a basic LLM chatbot.
+
+## Key Features
+
+- Natural-language DevOps assistant
+- MCP-based structured tool execution
+- GitHub integration through MCP
+- PostgreSQL-backed DevOps data
+- Credential-aware LLM provider routing and fallback
+- Structured request-level execution traces
+- Operations dashboard
+- Conversation history for follow-up questions
+- FastAPI REST API
+- Separate frontend, backend, and MCP server architecture
+
+## End-to-End Request Flow
+
+```text
+User question
+    -> Vue frontend
+    -> FastAPI
+    -> Agent
+    -> LLM provider
+    -> Tool decision
+    -> MCP client
+    -> MCP server
+    -> Selected MCP tool
+    -> PostgreSQL or GitHub
+    -> Tool result
+    -> LLM
+    -> Final answer and trace
+    -> Vue frontend
+```
+
+The frontend sends the question and bounded conversation history to the backend. The agent obtains the available MCP tools, asks the selected provider to reason over the question, invokes any requested tools, and sends the tool result back to the provider before returning the answer and trace.
+
+The browser does not directly access MCP, PostgreSQL, or GitHub. The backend owns service-to-service communication and credentials.
+
+## MCP Integration
+
+MCP keeps tool discovery and execution separate from the LLM provider and the browser. The backend MCP client connects to the MCP server, which exposes structured read-oriented capabilities backed by application services and the GitHub integration.
+
+The currently exposed tools include:
+
+- `search_repositories`
+- `search_issues`
+- `search_builds`
+- `get_slowest_builds`
+- `search_deployments`
+- `get_deployment_stats`
+- `search_incidents`
+- `get_incident_stats`
+- `github_get_repository`
+- `github_get_issues`
+- `github_get_pull_requests`
+
+The MCP server supports Streamable HTTP for the production transport. A separate stdio entry point is available for local MCP development and testing.
+
+### Why MCP?
+
+MCPilot uses Model Context Protocol to create a clear boundary between LLM reasoning and application capabilities.
+
+Instead of giving the browser or LLM direct access to databases and external APIs, capabilities are exposed as structured MCP tools. This provides a consistent tool interface, separates reasoning from execution, centralizes access to external systems, and makes tool execution easier to observe and extend.
+
+## Example Queries
+
+```text
+Which repositories use Python?
+
+Which repositories belong to the Platform team?
+
+Show me the failed deployments.
+
+What are the slowest builds?
+
+Show me active incidents.
+
+What is the description of octocat/Hello-World?
+
+List the open issues in octocat/Hello-World.
+
+Show me the pull requests for octocat/Hello-World.
+```
+
+The agent determines the required capability, invokes the appropriate MCP tool, and uses the returned structured data to generate the final response.
+
+## LLM Routing and Fallback
+
+The provider abstraction supports Gemini, Groq, and OpenAI. The configured primary provider is attempted first, followed by credentialed fallback providers in the router's configured order.
+
+```text
+Primary provider
+    -> provider failure
+    -> next credentialed fallback
+    -> successful answer or next fallback
+```
+
+The primary provider must have credentials. Fallback providers remain available when their credentials are present.
+
+Provider failures are recorded in the trace. Fallback is performed at the provider level, so a transient failure from the primary model does not necessarily fail the entire agent request.
+
+If all configured providers fail, the agent returns an error rather than producing an unsupported response.
+
+## GitHub Integration
+
+GitHub access is server-side and is exposed through the MCP layer. The browser does not call GitHub directly and does not receive GitHub credentials.
+
+The current integration supports:
+
+- Repository details
+- Repository issues
+- Repository pull requests
+
+The GitHub adapter communicates with the GitHub API through HTTPX, while MCP exposes the supported operations to the agent.
+
+A public repository such as `octocat/Hello-World` can be used for testing or demonstration or any available github repository.
+
+## Operations Dashboard
+
+The Operations view displays persisted backend data for:
+
+- **Repositories** — filtering by language, team, and visibility
+- **Builds** — status filtering and slowest-build results
+- **Deployments** — filtering and deployment statistics
+- **Incidents** — filtering and incident statistics
+- **Issues** — filtering by repository, priority, status, and assignee
+
+The dashboard consumes FastAPI endpoints rather than maintaining a duplicate dataset in the frontend.
+
+## Observability and Tracing
+
+Agent execution records request-scoped events such as:
+
+- `agent.request.started`
+- `llm.provider.started`
+- `mcp.tool.started`
+- `mcp.tool.completed`
+- `llm.provider.completed`
+- `llm.provider.selected`
+- `agent.response.completed`
+
+Events include fields such as timestamp, status, provider, tool name, duration, and safe error information.
+
+This provides visibility into provider selection, MCP tool execution, fallback behavior, failures, and execution timing for each assistant response.
+
+## API
+
+The FastAPI backend exposes these important endpoints:
+
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| GET | `/health` | Service health response |
+| GET | `/api/repositories` | Search persisted repositories |
+| GET | `/api/issues` | Search persisted issues |
+| GET | `/api/builds` | Search build runs |
+| GET | `/api/builds/slowest` | Return slowest build runs |
+| GET | `/api/deployments` | Search deployments |
+| GET | `/api/deployments/stats` | Return deployment statistics |
+| GET | `/api/incidents` | Search incidents |
+| GET | `/api/incidents/stats` | Return incident statistics |
+| POST | `/api/agent/chat` | Ask the DevOps assistant a question |
+
+## Technology Stack
+
+### Frontend
+
+- Vue 3
+- TypeScript
+- Vite
+- Tailwind CSS
+- Marked
+- DOMPurify
+
+### Backend
+
+- Python 3.10
+- FastAPI
+- SQLAlchemy
+- Alembic
+- Pydantic
+- Uvicorn
+
+### AI / MCP
+
+- Gemini
+- Groq
+- OpenAI
+- MCP Python SDK
+
+### Data / Integrations
+
+- PostgreSQL
+- psycopg
+- GitHub API through HTTPX
+
+### Testing
+
+- Pytest
+- Vitest
+- Vue Test Utils
+- jsdom
+
+## Local Development
+
+### Requirements
 
 - Python 3.10
 - Node.js and npm
 - PostgreSQL, or Docker Desktop for local PostgreSQL
 
-## Backend setup
+Create and activate a Python environment from the repository root:
 
-From the repository root:
-
-```text
+```powershell
 py -3.10 -m venv .venv
 .venv\Scripts\Activate.ps1
 python -m pip install -e ".[dev]"
 ```
 
-Copy `.env.example` to `.env` and set the required values. The selected `LLM_PRIMARY` provider must have credentials. Other providers are optional fallbacks and are used when their credentials are present.
+Copy `.env.example` to `.env` and supply the required configuration through environment variables.
 
-## PostgreSQL and migrations
+Start local PostgreSQL:
 
-Start the local database with:
-
-```text
+```bash
 docker compose up -d postgres
 ```
 
-The Compose defaults are for local development only. Production must provide its own database name, user, and password through environment configuration.
+Apply migrations and optionally load local seed data:
 
-Apply migrations with:
-
-```text
+```bash
 alembic upgrade head
-```
-
-Optional local seed data can be loaded with:
-
-```text
 python -m scripts.seed_data
 ```
 
-## Environment variables
-
-Backend variables belong in the server environment or root `.env` file:
-
-```text
-LLM_PRIMARY=gemini
-APP_ENV=development
-GEMINI_API_KEY=
-GROQ_API_KEY=
-OPENAI_API_KEY=
-DATABASE_URL=postgresql+psycopg://mcpilot:mcpilot@localhost:5432/mcpilot
-MCP_SERVER_URL=http://localhost:8001/mcp
-MCP_HOST=127.0.0.1
-MCP_PORT=8001
-CORS_ORIGINS=http://localhost:5173
-GITHUB_API_URL=https://api.github.com
-GITHUB_TOKEN=
-```
-
-`MCP_SERVER_URL=http://localhost:8001/mcp` is only the local-development default. Set `APP_ENV=production` and explicitly set `MCP_SERVER_URL` to the deployed MCP service URL in production; the backend refuses to start in production when it is missing. Do not put LLM, database, GitHub, or MCP credentials in frontend `VITE_*` variables.
-
-## Run the services locally
-
 Start FastAPI:
 
-```text
+```bash
 uvicorn backend.app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-Start the production-style Streamable HTTP MCP server in a second terminal:
+Start the Streamable HTTP MCP server in a second terminal:
 
-```text
+```bash
 python -m backend.app.mcp.server
 ```
 
-The local MCP client connects to `http://localhost:8001/mcp` by default. `backend/app/mcp/stdio_server.py` remains available for local MCP development and testing:
+For local stdio MCP development/testing:
 
-```text
+```bash
 python -m backend.app.mcp.stdio_server
 ```
 
-Start the frontend in a third terminal:
+Start the frontend:
 
-```text
+```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-For a separately hosted backend, set the public frontend variable `VITE_API_BASE_URL`. The Vite development proxy uses `VITE_API_PROXY_TARGET` when `VITE_API_BASE_URL` is empty.
+## Environment Configuration
 
-## LLM fallback and GitHub
+Credentials and service configuration are supplied through environment variables.
 
-The router tries `LLM_PRIMARY` first, followed by credentialed fallback providers. A provider failure is recorded in the request trace, and the next configured provider is attempted. No provider is used without its credentials.
-
-GitHub repository, issue, and pull-request reads are available through the MCP server and use the server-side `GITHUB_TOKEN` and `GITHUB_API_URL` configuration.
-
-## Verification
-
-Backend:
+Main backend variables include:
 
 ```text
+APP_ENV
+LLM_PRIMARY
+GEMINI_API_KEY
+GROQ_API_KEY
+OPENAI_API_KEY
+DATABASE_URL
+MCP_SERVER_URL
+CORS_ORIGINS
+GITHUB_API_URL
+GITHUB_TOKEN
+```
+
+The frontend uses public configuration variables such as:
+
+```text
+VITE_API_BASE_URL
+VITE_API_PROXY_TARGET
+```
+
+`VITE_*` values are exposed to the browser, so LLM, database, GitHub, and MCP credentials must remain server-side.
+
+Never commit `.env`, API keys, GitHub tokens, passwords, or database connection strings.
+
+## Testing
+
+Backend tests cover database services, MCP tools, agent behavior, tool schemas, and GitHub client/adapter behavior.
+
+Frontend tests cover API requests, routing, shared components, chat behavior, trace rendering, and Operations dashboard behavior.
+
+Run backend checks from the repository root:
+
+```bash
 python -m pip check
 pytest -v
 ```
 
-Frontend:
+Run frontend checks from `frontend`:
 
-```text
-cd frontend
+```bash
 npm run typecheck
 npm run lint
 npm run test -- --run
 npm run build
 ```
 
-## Production deployment
+## Engineering Highlights
 
-Run the FastAPI application and Streamable HTTP MCP server as separate processes or services. Set `APP_ENV=production`, production `DATABASE_URL`, `MCP_SERVER_URL`, `MCP_HOST`, `MCP_PORT`, `CORS_ORIGINS`, and the credentials for the selected LLM provider. Run `alembic upgrade head` against the production database before serving traffic. Build the frontend with `npm run build` and configure its public API base URL without exposing server credentials.
+- Clear frontend/backend separation
+- Agent orchestration around structured tool calls
+- MCP as an explicit tool boundary
+- Provider abstraction with credential-aware fallback
+- PostgreSQL persistence with Alembic migrations
+- Server-side GitHub integration
+- Request-scoped structured tracing
+- API response validation in the frontend service layer
+- Environment-based configuration for service endpoints and credentials
+
+## Limitations
+
+The demo deployment uses infrastructure that may scale services down after periods of inactivity, so the first request after inactivity can take longer.
+
+## License
+
+MIT License
