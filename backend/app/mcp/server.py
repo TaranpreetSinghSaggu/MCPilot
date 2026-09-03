@@ -2,6 +2,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from mcp.server.mcpserver import MCPServer
+from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
@@ -177,6 +178,7 @@ def get_incident_stats_mcp(
             service_name=service_name,
         )
 
+
 @mcp.tool(
     name="github_get_repository",
     description="Get repository information from GitHub using the repository owner and name.",
@@ -227,12 +229,20 @@ async def github_get_pull_requests_mcp(
     )
 
 
-
 if __name__ == "__main__":
-    mcp.run(
-        transport="streamable-http",
-        stateless_http=True,
-        json_response=True,
+    app = mcp.streamable_http_app()
+
+    app = CORSMiddleware(
+        app,
+        allow_origins=["https://frontend-two-blond-33.vercel.app"],
+        allow_methods=["GET", "POST", "DELETE"],
+        allow_headers=["*"],
+    )
+
+    import uvicorn
+
+    uvicorn.run(
+        app,
         host=MCP_HOST,
         port=MCP_PORT,
     )
